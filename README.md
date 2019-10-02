@@ -1,0 +1,1 @@
+# vrc_panoprama_picture_manage
