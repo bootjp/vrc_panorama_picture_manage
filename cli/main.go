@@ -75,7 +75,7 @@ func ValidToken(token string) bool {
 	}
 	r := redisConnection()
 
-	tokens, err := redis.Strings(r.Do("HGETALL", "tokens"))
+	tokens, err := redis.Strings(r.Do("SMEMBERS", "tokens"))
 	if err != nil {
 		return false
 	}
