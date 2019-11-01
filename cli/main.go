@@ -23,9 +23,9 @@ func main() {
 	e := echo.New()
 
 	// Routes
+	e.File("/r/__test__", "public/index.html")
 	e.GET("/r/:key", panoramaHandler)
 	e.POST("/api/update", apiHandler)
-	e.File("/r/__test__", "public/index.html")
 
 	e.Logger.Fatal(e.Start(":1323"))
 }
