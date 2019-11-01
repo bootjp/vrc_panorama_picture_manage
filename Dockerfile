@@ -14,7 +14,7 @@ RUN \
 
 FROM alpine
 RUN apk add --no-cache tzdata ca-certificates
-COPY ./public/ /
+COPY ./public/index.html /public/index.html
 COPY --from=build /app /app
 
 CMD ["/app"]
