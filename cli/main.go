@@ -23,7 +23,7 @@ func main() {
 	e := echo.New()
 
 	// Routes
-	e.File("/r/__test__", "public/index.html")
+	e.File("/_/__test__", "public/index.html")
 	e.GET("/r/:key", panoramaHandler)
 	e.POST("/api/update", apiHandler)
 
