@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
-	"github.com/google/uuid"
-
+	_ "github.com/bootjp/vrc_panoprama_picture_manage/statik"
 	"github.com/garyburd/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/labstack/echo"
+	"github.com/rakyll/statik/fs"
 )
 
 const envTempToken = "TEMPORARY_TOKEN"
@@ -23,10 +25,13 @@ func main() {
 	e := echo.New()
 
 	// Routes
-	e.Static("/_/", "public")
+	statikFS, err := fs.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	e.GET("/_/", echo.WrapHandler(http.StripPrefix("/_/", http.FileServer(statikFS))))
 	e.GET("/r/:key", panoramaHandler)
 	e.POST("/api/update", apiHandler)
-
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
@@ -95,6 +100,9 @@ func ValidToken(token string) bool {
 
 func redisConnection() redis.Conn {
 	host := os.Getenv("REDIS_HOST")
+	if host == "" {
+		host = "0.0.0.0"
+	}
 
 	c, err := redis.Dial("tcp", host+":6379")
 	if err != nil {
