@@ -71,7 +71,12 @@ func apiHandler(c echo.Context) error {
 	}
 	r := redisConnection()
 	_, err := r.Do("SET", u.Key, u.URL)
-	return err
+	if err != nil {
+		c.Response().Status = 400
+		return nil
+	}
+
+	return c.String(200, `{"status":"OK"}`)
 }
 
 func ValidToken(token string) bool {
