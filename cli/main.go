@@ -44,7 +44,11 @@ func panoramaHandler(c echo.Context) error {
 	var url string
 	var err error
 	if specialResponseHost(c.RealIP()) {
-		url, err = redis.String(r.Do("GET", "special_"+key))
+		prefix, err := redis.String(r.Do("GET", "special_prefix"))
+		if err == redis.ErrNil {
+			url, err = redis.String(r.Do("GET", key))
+		}
+		url, err = redis.String(r.Do("GET", prefix+"_"+key))
 		if err == redis.ErrNil {
 			url, err = redis.String(r.Do("GET", key))
 		}
