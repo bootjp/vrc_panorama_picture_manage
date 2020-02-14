@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -38,7 +39,19 @@ func main() {
 func panoramaHandler(c echo.Context) error {
 	key := c.Param("key")
 	r := redisConnection()
-	s, err := redis.String(r.Do("GET", key))
+	c.Response().Header().Set("Cache-Control", "no-store")
+
+	var url string
+	var err error
+	if specialResponseHost(c.RealIP()) {
+		url, err = redis.String(r.Do("GET", "special_"+key))
+		if err == redis.ErrNil {
+			url, err = redis.String(r.Do("GET", key))
+		}
+	} else {
+		url, err = redis.String(r.Do("GET", key))
+	}
+
 	if err != nil {
 		// redirect resource not found.
 		log.Println(err)
@@ -48,8 +61,7 @@ func panoramaHandler(c echo.Context) error {
 	if err != nil {
 		log.Println(err)
 	}
-	c.Response().Header().Set("Cache-Control", "no-store")
-	return c.Redirect(302, s)
+	return c.Redirect(302, url)
 }
 
 type (
@@ -59,6 +71,35 @@ type (
 		URL   string
 	}
 )
+
+func specialResponseHost(ip string) bool {
+	r := redisConnection()
+	hosts, err := redis.Strings(r.Do("SMEMBERS", "hosts"))
+	if err != nil {
+		return false
+	}
+	err = r.Close()
+	if err != nil {
+		log.Println(err)
+	}
+	for _, v := range hosts {
+		re, err := net.LookupHost(v)
+		if err != nil {
+			return false
+		}
+		for resolveIP := range re {
+			if ip == re[resolveIP] {
+				return true
+			}
+		}
+	}
+
+	err = r.Close()
+	if err != nil {
+		return false
+	}
+	return false
+}
 
 func apiHandler(c echo.Context) error {
 	u := &UpdateRequest{}
@@ -74,6 +115,10 @@ func apiHandler(c echo.Context) error {
 	if err != nil {
 		c.Response().Status = 400
 		return nil
+	}
+	err = r.Close()
+	if err != nil {
+		return err
 	}
 
 	return c.String(200, `{"status":"OK"}`)
