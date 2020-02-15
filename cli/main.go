@@ -43,20 +43,23 @@ func fetchContents(key string) (string string, err error) {
 	}()
 	return redis.String(r.Do("GET", key))
 }
+func loadSpecialResponse(key string) (string, error) {
+	prefix, err := fetchContents("special_prefix")
+	if err != nil {
+		return "", err
+	}
+	return fetchContents(prefix + "_" + key)
+}
 
-func panoramaHandler(c echo.Context) (err error) {
+func panoramaHandler(c echo.Context) error {
 	key := c.Param("key")
 	c.Response().Header().Set("Cache-Control", "no-store")
 
-	var url string
-	var prefix string
-
-	url, err = fetchContents(key)
-
+	url, err := fetchContents(key)
 	if specialResponseHost(c.RealIP()) {
-		prefix, err = fetchContents("special_prefix")
-		if err == nil {
-			url, err = fetchContents(prefix + "_" + key)
+		sURL, err := loadSpecialResponse(key)
+		if err != nil {
+			url = sURL
 		}
 	}
 
