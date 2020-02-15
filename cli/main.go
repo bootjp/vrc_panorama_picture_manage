@@ -39,7 +39,10 @@ func main() {
 func fetchContents(key string) (string string, err error) {
 	r := redisConnection()
 	defer func() {
-		err = r.Close()
+		if err := r.Close(); err != nil {
+			log.Print(err)
+		}
+
 	}()
 	return redis.String(r.Do("GET", key))
 }
@@ -83,9 +86,8 @@ type (
 func specialResponseHost(ip string) bool {
 	r := redisConnection()
 	defer func() {
-		err := r.Close()
-		if err != nil {
-			log.Println(err)
+		if err := r.Close(); err != nil {
+			log.Print(err)
 		}
 	}()
 	hosts, err := redis.Strings(r.Do("SMEMBERS", "hosts"))
@@ -136,15 +138,17 @@ func ValidToken(token string) bool {
 		return true
 	}
 	r := redisConnection()
+	defer func() {
+		if err := r.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
 
 	tokens, err := redis.Strings(r.Do("SMEMBERS", "tokens"))
 	if err != nil {
 		return false
 	}
-	err = r.Close()
-	if err != nil {
-		log.Println(err)
-	}
+
 	for _, v := range tokens {
 		if v == token {
 			return true
