@@ -36,34 +36,34 @@ func main() {
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
-func panoramaHandler(c echo.Context) error {
-	key := c.Param("key")
+func fetchContents(key string) (string string, err error) {
 	r := redisConnection()
+	defer func() {
+		err = r.Close()
+	}()
+	return redis.String(r.Do("GET", key))
+}
+
+func panoramaHandler(c echo.Context) (err error) {
+	key := c.Param("key")
 	c.Response().Header().Set("Cache-Control", "no-store")
 
 	var url string
-	var err error
+	var prefix string
+
+	url, err = fetchContents(key)
+
 	if specialResponseHost(c.RealIP()) {
-		prefix, err := redis.String(r.Do("GET", "special_prefix"))
-		if err == redis.ErrNil {
-			url, err = redis.String(r.Do("GET", key))
+		prefix, err = fetchContents("special_prefix")
+		if err == nil {
+			url, err = fetchContents(prefix + "_" + key)
 		}
-		url, err = redis.String(r.Do("GET", prefix+"_"+key))
-		if err == redis.ErrNil {
-			url, err = redis.String(r.Do("GET", key))
-		}
-	} else {
-		url, err = redis.String(r.Do("GET", key))
 	}
 
 	if err != nil {
 		// redirect resource not found.
 		log.Println(err)
 		return c.NoContent(204)
-	}
-	err = r.Close()
-	if err != nil {
-		log.Println(err)
 	}
 	return c.Redirect(302, url)
 }
@@ -78,13 +78,15 @@ type (
 
 func specialResponseHost(ip string) bool {
 	r := redisConnection()
+	defer func() {
+		err := r.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
 	hosts, err := redis.Strings(r.Do("SMEMBERS", "hosts"))
 	if err != nil {
 		return false
-	}
-	err = r.Close()
-	if err != nil {
-		log.Println(err)
 	}
 	for _, v := range hosts {
 		re, err := net.LookupHost(v)
@@ -98,10 +100,6 @@ func specialResponseHost(ip string) bool {
 		}
 	}
 
-	err = r.Close()
-	if err != nil {
-		return false
-	}
 	return false
 }
 
