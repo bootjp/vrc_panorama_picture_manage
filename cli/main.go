@@ -56,18 +56,19 @@ func panoramaHandler(c echo.Context) error {
 	c.Response().Header().Set("Cache-Control", "no-store")
 
 	url, err := fetchContents(key)
-	if specialResponseHost(c.RealIP()) {
-		sURL, err := loadSpecialResponse(key)
-		if err != nil {
-			url = sURL
-		}
-	}
-
 	if err != nil {
 		// redirect resource not found.
 		log.Println(err)
 		return c.NoContent(204)
 	}
+
+	if specialResponseHost(c.RealIP()) {
+		sURL, err := loadSpecialResponse(key)
+		if err == nil {
+			url = sURL
+		}
+	}
+
 	return c.Redirect(302, url)
 }
 
