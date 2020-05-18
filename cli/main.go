@@ -46,13 +46,6 @@ func fetchContents(key string) (string string, err error) {
 	}()
 	return redis.String(r.Do("GET", key))
 }
-func loadSpecialResponse(key string) (string, error) {
-	prefix, err := fetchContents("special_prefix")
-	if err != nil {
-		return "", err
-	}
-	return fetchContents(prefix + "_" + key)
-}
 
 func panoramaHandler(c echo.Context) error {
 	key := c.Param("key")
@@ -63,13 +56,6 @@ func panoramaHandler(c echo.Context) error {
 		// redirect resource not found.
 		log.Println(err)
 		return c.NoContent(204)
-	}
-
-	if specialResponseHost(c.RealIP()) {
-		sURL, err := loadSpecialResponse(key)
-		if err == nil {
-			url = sURL
-		}
 	}
 
 	return c.Redirect(302, url)
