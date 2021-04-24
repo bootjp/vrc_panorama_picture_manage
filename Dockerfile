@@ -6,7 +6,7 @@ COPY . .
 RUN go get github.com/rakyll/statik && $GOPATH/bin/statik -src=./public
 RUN GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -a -o out cli/main.go && cp out /app
 
-FROM golang:latest@sha256:e7de4081f3cb640bb4a0fd2f32402f551cbf0752b17f8b4ba8d5e49b9b49a170
+FROM gcr.io/distroless/static@sha256:c63dfa9945cfb5f260c5e73e2d2b4c4ea3f444b00fc45eab3d6bf45d4b4aa122
 COPY --from=build /app /app
 
 CMD ["/app"]
