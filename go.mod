@@ -8,6 +8,6 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.3.0 // indirect
-	github.com/rakyll/statik v0.1.6
+	github.com/rakyll/statik v0.1.7
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 // indirect
 )
