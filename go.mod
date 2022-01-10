@@ -7,7 +7,7 @@ require (
 	github.com/garyburd/redigo v1.6.2
 	github.com/google/uuid v1.3.0
 	github.com/labstack/echo v3.3.10+incompatible
-	github.com/labstack/echo/v4 v4.6.2
+	github.com/labstack/echo/v4 v4.6.3
 	github.com/rakyll/statik v0.1.7
 	gopkg.in/yaml.v2 v2.2.2 // indirect
 )
