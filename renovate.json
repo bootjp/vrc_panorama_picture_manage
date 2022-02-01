@@ -1,5 +1,17 @@
 {
-  "extends": [
-    "config:base"
-  ]
+    "extends": [
+        "config:base",
+        "schedule:weekends",
+    ],
+    "postUpdateOptions": [
+        "gomodTidy"
+    ],
+    "packageRules": [
+        {
+            "schedule": [
+                "at any time"
+            ]
+        }
+    ],
+    "timezone": "Asia/Tokyo"
 }
