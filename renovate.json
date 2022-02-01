@@ -6,12 +6,5 @@
     "postUpdateOptions": [
         "gomodTidy"
     ],
-    "packageRules": [
-        {
-            "schedule": [
-                "at any time"
-            ]
-        }
-    ],
     "timezone": "Asia/Tokyo"
 }
