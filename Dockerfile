@@ -1,5 +1,4 @@
-FROM golang:1.18 AS build
-ENV GO111MODULE=on
+FROM golang:1.19 AS build
 
 WORKDIR $GOPATH/src/bootjp/vrc_panoprama_picture_manage
 COPY . .
