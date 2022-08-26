@@ -15,7 +15,7 @@ import (
 
 const envTempToken = "TEMPORARY_TOKEN"
 
-var logger = log.New(os.Stdout)
+var logger = log.New(os.Stdout, "vrc_panoprama_picture_manage: ", log.LstdFlags)
 
 func main() {
 	temporaryToken := uuid.Must(uuid.NewRandom())
