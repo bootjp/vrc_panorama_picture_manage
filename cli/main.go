@@ -1,16 +1,17 @@
 package main
 
 import (
-	"log"
-	"net/http"
-	"os"
-	"strings"
-
 	_ "github.com/bootjp/vrc_panoprama_picture_manage/statik"
 	"github.com/garyburd/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/labstack/echo"
 	"github.com/rakyll/statik/fs"
+	ffmpeg "github.com/u2takey/ffmpeg-go"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strings"
 )
 
 const envTempToken = "TEMPORARY_TOKEN"
@@ -34,7 +35,8 @@ func main() {
 	e.GET("/_/", echo.WrapHandler(http.StripPrefix("/_/", http.FileServer(statikFS))))
 	e.GET("/v1/:key", panoramaHandler)
 	e.GET("/v2/:key", mp4Handler)
-	e.POST("/api/update", apiHandler)
+	e.GET("/api/keys", keysHandler)
+	e.PUT("/api/:key", putHandler)
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
@@ -84,17 +86,18 @@ func mp4Handler(c echo.Context) error {
 }
 
 type (
-	UpdateRequest struct {
+	PutRequest struct {
 		Token string
-		Key   string
 		URL   string
 	}
 )
 
-// apiHandler is handling manage request
+// putHandler is handling manage request
 // check temporary token or in redis persistent token
-func apiHandler(c echo.Context) error {
-	u := &UpdateRequest{}
+func putHandler(c echo.Context) error {
+	key := c.Param("key")
+
+	u := &PutRequest{}
 	if err := c.Bind(u); err != nil {
 		return c.String(400, `{"message": "invalid request"}`)
 	}
@@ -102,7 +105,13 @@ func apiHandler(c echo.Context) error {
 		return c.String(400, `{"message": "invalid request"}`)
 	}
 	r, _ := redisConnection()
-	_, err := r.Do("SET", u.Key, u.URL)
+	defer func() {
+		if err := r.Close(); err != nil {
+			logger.Println(err)
+		}
+	}()
+
+	_, err := r.Do("SET", key, u.URL)
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
@@ -110,8 +119,33 @@ func apiHandler(c echo.Context) error {
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
+	_, err = r.Do("RPUSH", "keys", key)
+	if err != nil {
+		return c.String(500, `{"message": "data save failed"}`)
+	}
 
 	return c.String(200, `{"message":"success"}`)
+}
+
+func keysHandler(c echo.Context) error {
+	r, err := redisConnection()
+	if err != nil {
+		logger.Println(err)
+		return c.JSON(500, `{"message": "data save failed"}`)
+	}
+	defer func() {
+		if err := r.Close(); err != nil {
+			logger.Println(err)
+		}
+	}()
+
+	k, err := redis.Strings(r.Do("LRANGE", "keys", 0, -1))
+	if err != nil {
+		logger.Println(err)
+		return c.JSON(500, `{"message": "data save failed"}`)
+	}
+
+	return c.JSON(200, k)
 }
 
 func validToken(token string) bool {
@@ -121,12 +155,12 @@ func validToken(token string) bool {
 	}
 	r, err := redisConnection()
 	if err != nil {
-		log.Println(err)
+		logger.Println(err)
 		return false
 	}
 	defer func() {
 		if err := r.Close(); err != nil {
-			log.Print(err)
+			logger.Print(err)
 		}
 	}()
 
@@ -156,13 +190,47 @@ func getContentURLByKey(key string) (string, error) {
 }
 
 func fetchContentByURL(url string) ([]byte, error) {
-	// todo fetch http content
-	return nil, nil
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	return io.ReadAll(resp.Body)
 }
 
 func generateMP4(data []byte) ([]byte, error) {
-	// todo generate mp4
-	return nil, nil
+
+	imgFile, err := os.CreateTemp("dir", "vrc_ppm")
+	if err != nil {
+		logger.Println(err)
+		return nil, err
+	}
+	movFile, err := os.CreateTemp("dir", "vrc_ppm")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		_ = os.RemoveAll(imgFile.Name())
+		_ = os.RemoveAll(movFile.Name())
+	}()
+
+	_, err = imgFile.Write(data)
+	if err != nil {
+		logger.Println(err)
+		return nil, err
+	}
+
+	err = ffmpeg.Input(imgFile.Name()).
+		Output(movFile.Name(), ffmpeg.KwArgs{"framerate": 1}).OverWriteOutput().Run()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return io.ReadAll(movFile)
 }
 
 func redisConnection() (redis.Conn, error) {
