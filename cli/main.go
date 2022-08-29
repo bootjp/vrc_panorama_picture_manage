@@ -35,8 +35,8 @@ func main() {
 	e.GET("/_/", echo.WrapHandler(http.StripPrefix("/_/", http.FileServer(statikFS))))
 	e.GET("/v1/:key", panoramaHandler)
 	e.GET("/v2/:key", mp4Handler)
-	e.GET("/api/keys", keysHandler)
 	e.PUT("/api/:key", putHandler)
+	e.GET("/api/keys", keysHandler)
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
@@ -87,8 +87,8 @@ func mp4Handler(c echo.Context) error {
 
 type (
 	PutRequest struct {
-		Token string
-		URL   string
+		Token string `json:"token"`
+		URL   string `json:"url"`
 	}
 )
 
@@ -102,7 +102,7 @@ func putHandler(c echo.Context) error {
 		return c.String(400, `{"message": "invalid request"}`)
 	}
 	if !validToken(u.Token) {
-		return c.String(400, `{"message": "invalid request"}`)
+		return c.String(403, `{"message": "invalid request"}`)
 	}
 	r, _ := redisConnection()
 	defer func() {
@@ -115,7 +115,6 @@ func putHandler(c echo.Context) error {
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
-	err = r.Close()
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
@@ -203,12 +202,12 @@ func fetchContentByURL(url string) ([]byte, error) {
 
 func generateMP4(data []byte) ([]byte, error) {
 
-	imgFile, err := os.CreateTemp("dir", "vrc_ppm")
+	imgFile, err := os.CreateTemp(os.TempDir(), "vrc_ppm")
 	if err != nil {
 		logger.Println(err)
 		return nil, err
 	}
-	movFile, err := os.CreateTemp("dir", "vrc_ppm")
+	movFile, err := os.CreateTemp(os.TempDir(), "vrc_ppm")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -217,6 +216,11 @@ func generateMP4(data []byte) ([]byte, error) {
 		_ = os.RemoveAll(movFile.Name())
 	}()
 
+	err = os.Rename(movFile.Name(), movFile.Name()+".mp4")
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = imgFile.Write(data)
 	if err != nil {
 		logger.Println(err)
@@ -224,7 +228,7 @@ func generateMP4(data []byte) ([]byte, error) {
 	}
 
 	err = ffmpeg.Input(imgFile.Name()).
-		Output(movFile.Name(), ffmpeg.KwArgs{"framerate": 1}).OverWriteOutput().Run()
+		Output(movFile.Name()+".mp4", ffmpeg.KwArgs{"framerate": 1}).OverWriteOutput().Run()
 
 	if err != nil {
 		return nil, err
@@ -236,7 +240,7 @@ func generateMP4(data []byte) ([]byte, error) {
 func redisConnection() (redis.Conn, error) {
 	host := os.Getenv("REDIS_HOST")
 	if host == "" {
-		host = "0.0.0.0"
+		host = "localhost"
 	}
 
 	// fill default port
