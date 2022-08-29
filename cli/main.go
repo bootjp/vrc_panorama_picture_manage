@@ -244,17 +244,18 @@ func redisConnection() (redis.Conn, error) {
 	}
 
 	// fill default port
-	if !strings.Contains(":", host) {
+	if !strings.Contains(host, ":") {
 		host += ":6379"
 	}
 
-	c, err := redis.Dial("tcp", host)
-	if err != nil {
-		return nil, err
+	opt := redis.DialOption{}
+	if pw := os.Getenv("REDIS_PASSWORD"); pw != "" {
+		opt = redis.DialPassword(pw)
 	}
 
-	if pw := os.Getenv("REDIS_PASSWORD"); pw != "" {
-		redis.DialPassword(pw)
+	c, err := redis.Dial("tcp", host, opt)
+	if err != nil {
+		return nil, err
 	}
 
 	return c, nil
