@@ -252,5 +252,10 @@ func redisConnection() (redis.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if pw := os.Getenv("REDIS_PASSWORD"); pw != "" {
+		redis.DialPassword(pw)
+	}
+
 	return c, nil
 }
