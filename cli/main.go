@@ -7,10 +7,12 @@ import (
 	"github.com/labstack/echo"
 	"github.com/rakyll/statik/fs"
 	ffmpeg "github.com/u2takey/ffmpeg-go"
+	"hash/fnv"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -37,7 +39,7 @@ func main() {
 	e.GET("/v2/:key", mp4Handler)
 	e.PUT("/api/:key", putHandler)
 	e.GET("/api/keys", keysHandler)
-	e.Logger.Fatal(e.Start(":1323"))
+	e.Logger.Fatal(e.Start("127.0.0.1:1323"))
 }
 
 // panoramaHandler is response redirect endpoint
@@ -77,12 +79,48 @@ func mp4Handler(c echo.Context) error {
 		return c.NoContent(204)
 	}
 
-	movie, err := generateMP4(data)
+	cacheExists, movie := checkCacheExists(url)
+	if cacheExists {
+		return c.Blob(200, "video/mp4", movie)
+	}
+
+	movie, err = generateMP4(data)
+	if err != nil {
+		logger.Println(err)
+	}
+
+	err = checkCachePut(url, movie)
 	if err != nil {
 		logger.Println(err)
 	}
 
 	return c.Blob(200, "video/mp4", movie)
+}
+
+func checkCachePut(url string, movie []byte) error {
+	h := hash(url)
+	return os.WriteFile(os.TempDir()+strconv.Itoa(int(h)), movie, 0644)
+}
+
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(s))
+	return h.Sum32()
+}
+
+func checkCacheExists(url string) (bool, []byte) {
+	h := hash(url)
+	f, err := os.Open(os.TempDir() + strconv.Itoa(int(h)))
+	if err != nil {
+		return false, nil
+	}
+
+	d, err := io.ReadAll(f)
+	if err != nil {
+		return false, nil
+	}
+
+	return true, d
 }
 
 type (
@@ -104,21 +142,25 @@ func putHandler(c echo.Context) error {
 	if !validToken(u.Token) {
 		return c.String(403, `{"message": "invalid request"}`)
 	}
-	r, _ := redisConnection()
+	r, err := redisConnection()
+	if err != nil {
+		logger.Println(err)
+		return err
+	}
 	defer func() {
 		if err := r.Close(); err != nil {
 			logger.Println(err)
 		}
 	}()
 
-	_, err := r.Do("SET", key, u.URL)
+	_, err = r.Do("SET", key, u.URL)
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
-	_, err = r.Do("RPUSH", "keys", key)
+	_, err = r.Do("SADD", "keys", key)
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
@@ -138,7 +180,7 @@ func keysHandler(c echo.Context) error {
 		}
 	}()
 
-	k, err := redis.Strings(r.Do("LRANGE", "keys", 0, -1))
+	k, err := redis.Strings(r.Do("SMEMBERS", "keys"))
 	if err != nil {
 		logger.Println(err)
 		return c.JSON(500, `{"message": "data save failed"}`)
@@ -178,7 +220,11 @@ func validToken(token string) bool {
 }
 
 func getContentURLByKey(key string) (string, error) {
-	r, _ := redisConnection()
+	r, err := redisConnection()
+	if err != nil {
+		logger.Println(err)
+		return "", err
+	}
 	defer func() {
 		if err := r.Close(); err != nil {
 			logger.Println(err)
@@ -248,12 +294,12 @@ func redisConnection() (redis.Conn, error) {
 		host += ":6379"
 	}
 
-	opt := redis.DialOption{}
+	var opts []redis.DialOption
 	if pw := os.Getenv("REDIS_PASSWORD"); pw != "" {
-		opt = redis.DialPassword(pw)
+		opts = append(opts, redis.DialPassword(pw))
 	}
 
-	c, err := redis.Dial("tcp", host, opt)
+	c, err := redis.Dial("tcp", host, opts...)
 	if err != nil {
 		return nil, err
 	}
