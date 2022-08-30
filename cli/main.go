@@ -47,7 +47,7 @@ func main() {
 // ex) VRChat SDK2 World Panorama Component
 func panoramaHandler(c echo.Context) error {
 	key := c.Param("key")
-	c.Response().Header().Set("Cache-Control", "no-store")
+	c.Response().Header().Set("Cache-Control", "public, max-age=0, s-maxage=1800")
 
 	url, err := getContentURLByKey(key)
 	if err != nil {
@@ -65,6 +65,7 @@ func panoramaHandler(c echo.Context) error {
 func mp4Handler(c echo.Context) error {
 	key := c.Param("key")
 	c.Response().Header().Set("Cache-Control", "no-store")
+	c.Response().Header().Set("Cloudflare-CDN-Cache-Control", "max-age=1800")
 
 	url, err := getContentURLByKey(key)
 	if err != nil {
