@@ -104,21 +104,25 @@ func putHandler(c echo.Context) error {
 	if !validToken(u.Token) {
 		return c.String(403, `{"message": "invalid request"}`)
 	}
-	r, _ := redisConnection()
+	r, err := redisConnection()
+	if err != nil {
+		logger.Println(err)
+		return err
+	}
 	defer func() {
 		if err := r.Close(); err != nil {
 			logger.Println(err)
 		}
 	}()
 
-	_, err := r.Do("SET", key, u.URL)
+	_, err = r.Do("SET", key, u.URL)
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
-	_, err = r.Do("RPUSH", "keys", key)
+	_, err = r.Do("SADD", "keys", key)
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
@@ -138,7 +142,7 @@ func keysHandler(c echo.Context) error {
 		}
 	}()
 
-	k, err := redis.Strings(r.Do("LRANGE", "keys", 0, -1))
+	k, err := redis.Strings(r.Do("SMEMBERS", "keys"))
 	if err != nil {
 		logger.Println(err)
 		return c.JSON(500, `{"message": "data save failed"}`)
@@ -178,7 +182,11 @@ func validToken(token string) bool {
 }
 
 func getContentURLByKey(key string) (string, error) {
-	r, _ := redisConnection()
+	r, err := redisConnection()
+	if err != nil {
+		logger.Println(err)
+		return "", err
+	}
 	defer func() {
 		if err := r.Close(); err != nil {
 			logger.Println(err)
@@ -248,12 +256,12 @@ func redisConnection() (redis.Conn, error) {
 		host += ":6379"
 	}
 
-	opt := redis.DialOption{}
+	var opts []redis.DialOption
 	if pw := os.Getenv("REDIS_PASSWORD"); pw != "" {
-		opt = redis.DialPassword(pw)
+		opts = append(opts, redis.DialPassword(pw))
 	}
 
-	c, err := redis.Dial("tcp", host, opt)
+	c, err := redis.Dial("tcp", host, opts...)
 	if err != nil {
 		return nil, err
 	}
