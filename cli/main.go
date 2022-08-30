@@ -7,10 +7,12 @@ import (
 	"github.com/labstack/echo"
 	"github.com/rakyll/statik/fs"
 	ffmpeg "github.com/u2takey/ffmpeg-go"
+	"hash/fnv"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -37,7 +39,7 @@ func main() {
 	e.GET("/v2/:key", mp4Handler)
 	e.PUT("/api/:key", putHandler)
 	e.GET("/api/keys", keysHandler)
-	e.Logger.Fatal(e.Start(":1323"))
+	e.Logger.Fatal(e.Start("127.0.0.1:1323"))
 }
 
 // panoramaHandler is response redirect endpoint
@@ -77,12 +79,48 @@ func mp4Handler(c echo.Context) error {
 		return c.NoContent(204)
 	}
 
-	movie, err := generateMP4(data)
+	cacheExists, movie := checkCacheExists(url)
+	if cacheExists {
+		return c.Blob(200, "video/mp4", movie)
+	}
+
+	movie, err = generateMP4(data)
+	if err != nil {
+		logger.Println(err)
+	}
+
+	err = checkCachePut(url, movie)
 	if err != nil {
 		logger.Println(err)
 	}
 
 	return c.Blob(200, "video/mp4", movie)
+}
+
+func checkCachePut(url string, movie []byte) error {
+	h := hash(url)
+	return os.WriteFile(os.TempDir()+strconv.Itoa(int(h)), movie, 0644)
+}
+
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(s))
+	return h.Sum32()
+}
+
+func checkCacheExists(url string) (bool, []byte) {
+	h := hash(url)
+	f, err := os.Open(os.TempDir() + strconv.Itoa(int(h)))
+	if err != nil {
+		return false, nil
+	}
+
+	d, err := io.ReadAll(f)
+	if err != nil {
+		return false, nil
+	}
+
+	return true, d
 }
 
 type (
