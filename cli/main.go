@@ -39,7 +39,7 @@ func main() {
 	e.GET("/v2/:key", mp4Handler)
 	e.PUT("/api/:key", putHandler)
 	e.GET("/api/keys", keysHandler)
-	e.Logger.Fatal(e.Start("127.0.0.1:1323"))
+	e.Logger.Fatal(e.Start(":1323"))
 }
 
 // panoramaHandler is response redirect endpoint
