@@ -47,7 +47,8 @@ func main() {
 // ex) VRChat SDK2 World Panorama Component
 func panoramaHandler(c echo.Context) error {
 	key := c.Param("key")
-	c.Response().Header().Set("Cache-Control", "public, max-age=0, s-maxage=1800")
+	c.Response().Header().Set("Cache-Control", "max-age=0, s-maxage=1800")
+	c.Response().Header().Set("CDN-Cache-Control", "maxage=1800")
 
 	url, err := getContentURLByKey(key)
 	if err != nil {
