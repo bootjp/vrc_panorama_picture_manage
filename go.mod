@@ -3,7 +3,7 @@ module github.com/bootjp/vrc_panoprama_picture_manage
 go 1.19
 
 require (
-	github.com/garyburd/redigo v1.6.3
+	github.com/garyburd/redigo v1.6.4
 	github.com/google/uuid v1.3.0
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/rakyll/statik v0.1.7
