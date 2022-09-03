@@ -1,11 +1,9 @@
 package main
 
 import (
-	_ "github.com/bootjp/vrc_panoprama_picture_manage/statik"
 	"github.com/garyburd/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/labstack/echo"
-	"github.com/rakyll/statik/fs"
 	ffmpeg "github.com/u2takey/ffmpeg-go"
 	"hash/fnv"
 	"io"
@@ -30,10 +28,7 @@ func main() {
 	e := echo.New()
 
 	// Routes
-	statikFS, err := fs.New()
-	if err != nil {
-		logger.Fatalln(err)
-	}
+	statikFS := http.Dir("./public")
 	e.GET("/_/", echo.WrapHandler(http.StripPrefix("/_/", http.FileServer(statikFS))))
 	e.GET("/v1/:key", panoramaHandler)
 	e.GET("/v2/:key", mp4Handler)
