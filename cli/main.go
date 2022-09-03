@@ -268,6 +268,10 @@ func generateMP4(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	movFile, err = os.Open(movFile.Name() + ".mp4")
+	if err != nil {
+		return nil, err
+	}
 
 	_, err = imgFile.Write(data)
 	if err != nil {
@@ -275,9 +279,8 @@ func generateMP4(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	err = ffmpeg.Input(imgFile.Name()).
-		Output(movFile.Name()+".mp4", ffmpeg.KwArgs{"framerate": 1}).OverWriteOutput().Run()
-
+	err = ffmpeg.Input(imgFile.Name(), ffmpeg.KwArgs{"r": 1}).
+		Output(movFile.Name(), ffmpeg.KwArgs{"t": 1}, ffmpeg.KwArgs{"pix_fmt": "yuv420p"}, ffmpeg.KwArgs{"format": "mp4"}).OverWriteOutput().Run()
 	if err != nil {
 		return nil, err
 	}
