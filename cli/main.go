@@ -279,8 +279,14 @@ func generateMP4(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	err = ffmpeg.Input(imgFile.Name(), ffmpeg.KwArgs{"r": 1}).
-		Output(movFile.Name(), ffmpeg.KwArgs{"t": 1}, ffmpeg.KwArgs{"pix_fmt": "yuv420p"}, ffmpeg.KwArgs{"format": "mp4"}).OverWriteOutput().Run()
+	err = ffmpeg.Input(imgFile.Name(), ffmpeg.KwArgs{"loop": 1}).
+		Output(movFile.Name(),
+			ffmpeg.KwArgs{"t": 1},
+			ffmpeg.KwArgs{"vcodec": "libx264"},
+			ffmpeg.KwArgs{"profile:v": "baseline"},
+			ffmpeg.KwArgs{"pix_fmt": "yuv420p"},
+			ffmpeg.KwArgs{"format": "mp4"},
+		).OverWriteOutput().Run()
 	if err != nil {
 		return nil, err
 	}
