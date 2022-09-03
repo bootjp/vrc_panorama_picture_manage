@@ -5,6 +5,8 @@ COPY . .
 RUN go install github.com/rakyll/statik@latest && statik -src=./public
 RUN GOOS=linux CGO_ENABLED=0 go build -a -o out cli/main.go && cp out /app
 RUN wget http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+# COPY ffmpeg-release-amd64-static.tar.xz ffmpeg-release-amd64-static.tar.xz
+
 RUN apt-get -y update
 RUN apt-get install -y xz-utils liblzma-dev
 RUN tar Jxfv ./ffmpeg-release-amd64-static.tar.xz
