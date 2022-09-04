@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"github.com/garyburd/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/labstack/echo"
@@ -13,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 )
+
+//go:embed index.html
+var staticFiles embed.FS
 
 const envTempToken = "TEMPORARY_TOKEN"
 
@@ -28,8 +32,7 @@ func main() {
 	e := echo.New()
 
 	// Routes
-	statikFS := http.Dir("./public")
-	e.GET("/_/", echo.WrapHandler(http.StripPrefix("/_/", http.FileServer(statikFS))))
+	e.GET("/_/", echo.WrapHandler(http.StripPrefix("/_/", http.FileServer(http.FS(staticFiles)))))
 	e.GET("/v1/:key", panoramaHandler)
 	e.GET("/v2/:key", mp4Handler)
 	e.PUT("/api/:key", putHandler)

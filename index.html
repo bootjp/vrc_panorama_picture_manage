@@ -1,0 +1,30 @@
+<html lang="ja">
+<head>
+  <title>check panorama view </title>
+  <style>
+      img {
+          width: 500px;
+      }
+  </style>
+</head>
+
+<body>
+
+<script>
+    fetch(`${location.protocol}//${location.host}/api/keys`)
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(key => {
+                const div = document.createElement("div");
+                const p = document.createElement('p');
+                p.innerText = `key: ${key}`;
+                div.appendChild(p);
+                const img = document.createElement("img");
+                img.src = `/v1/${key}`
+                div.appendChild(img);
+                document.body.appendChild(div);
+            });
+        });
+</script>
+</body>
+</html>
