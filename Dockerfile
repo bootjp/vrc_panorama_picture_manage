@@ -3,7 +3,7 @@ FROM golang:latest AS build
 WORKDIR $GOPATH/src/bootjp/vrc_panoprama_picture_manage
 COPY . .
 RUN go install github.com/rakyll/statik@latest && statik -src=./public
-RUN GOOS=linux CGO_ENABLED=0 go build -a -o out cli/main.go && cp out /app
+RUN GOOS=linux CGO_ENABLED=0 go build -a -o out main.go && cp out /app
 RUN wget http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
 # COPY ffmpeg-release-amd64-static.tar.xz ffmpeg-release-amd64-static.tar.xz
 
