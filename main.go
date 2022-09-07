@@ -263,7 +263,7 @@ func validToken(req string) bool {
 	}
 
 	for _, v := range tokens {
-		if v == token {
+		if v == req {
 			return true
 		}
 	}
