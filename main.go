@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //go:embed index.html
@@ -21,14 +22,56 @@ var staticFiles embed.FS
 const envTempToken = "TEMPORARY_TOKEN"
 
 var logger = log.New(os.Stdout, "vrc_panoprama_picture_manage: ", log.LstdFlags)
+var token string
 
 func main() {
-	temporaryToken := uuid.Must(uuid.NewRandom())
-	err := os.Setenv(envTempToken, temporaryToken.String())
-	if err != nil {
-		logger.Fatalln(err)
+	token := os.Getenv(envTempToken)
+
+	if token == "" {
+		token = uuid.Must(uuid.NewRandom()).String()
 	}
-	logger.Printf("current temporary token %s \n", temporaryToken)
+	logger.Printf("current temporary token %s \n", token)
+
+	go func() {
+		for range time.Tick(time.Minute) {
+			r, err := redisConnection()
+			if err != nil {
+				logger.Println(err)
+			}
+
+			k, err := redis.Strings(r.Do("SMEMBERS", "keys"))
+			if err != nil {
+				logger.Println(err)
+			}
+			for _, key := range k {
+				url, err := getContentURLByKey(key)
+				if err != nil {
+					logger.Println(err)
+				}
+				if ok, _ := checkCacheExists(url); ok {
+					continue
+				}
+
+				data, err := fetchContentByURL(url)
+				if err != nil {
+					logger.Println(err)
+				}
+				err = cachePut(url, data)
+				if err != nil {
+					log.Println(err)
+				}
+				log.Println("cache generate", url)
+
+				err = r.Close()
+				if err != nil {
+					logger.Println(err)
+					return
+				}
+			}
+
+		}
+	}()
+
 	e := echo.New()
 
 	// Routes
@@ -89,7 +132,7 @@ func mp4Handler(c echo.Context) error {
 		logger.Println(err)
 	}
 
-	err = checkCachePut(url, movie)
+	err = cachePut(url, movie)
 	if err != nil {
 		logger.Println(err)
 	}
@@ -97,7 +140,7 @@ func mp4Handler(c echo.Context) error {
 	return c.Blob(200, "video/mp4", movie)
 }
 
-func checkCachePut(url string, movie []byte) error {
+func cachePut(url string, movie []byte) error {
 	h := hash(url)
 	return os.WriteFile(os.TempDir()+strconv.Itoa(int(h)), movie, 0644)
 }
@@ -189,9 +232,8 @@ func keysHandler(c echo.Context) error {
 	return c.JSON(200, k)
 }
 
-func validToken(token string) bool {
-	tt := os.Getenv(envTempToken)
-	if tt != "" && tt == token {
+func validToken(req string) bool {
+	if token == req {
 		return true
 	}
 	r, err := redisConnection()
@@ -284,7 +326,7 @@ func generateMP4(data []byte) ([]byte, error) {
 			ffmpeg.KwArgs{"profile:v": "baseline"},
 			ffmpeg.KwArgs{"pix_fmt": "yuv420p"},
 			ffmpeg.KwArgs{"format": "mp4"},
-		).OverWriteOutput().Run()
+		).OverWriteOutput().WithTimeout(2 * time.Minute).Run()
 	if err != nil {
 		return nil, err
 	}
