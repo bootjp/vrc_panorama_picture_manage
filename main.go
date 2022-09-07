@@ -62,13 +62,12 @@ func main() {
 				}
 				log.Println("cache generate", url)
 
-				err = r.Close()
-				if err != nil {
-					logger.Println(err)
-					return
-				}
 			}
-
+			err = r.Close()
+			if err != nil {
+				logger.Println(err)
+				return
+			}
 		}
 	}()
 
