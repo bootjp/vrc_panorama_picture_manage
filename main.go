@@ -37,11 +37,13 @@ func main() {
 			r, err := redisConnection()
 			if err != nil {
 				logger.Println(err)
+				continue
 			}
 
 			k, err := redis.Strings(r.Do("SMEMBERS", "keys"))
 			if err != nil {
 				logger.Println(err)
+				continue
 			}
 			for _, key := range k {
 				url, err := getContentURLByKey(key)
@@ -71,7 +73,6 @@ func main() {
 					continue
 				}
 				log.Println("cache generate", url)
-
 			}
 			err = r.Close()
 			if err != nil {
