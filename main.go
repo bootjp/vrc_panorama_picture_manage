@@ -22,14 +22,15 @@ var staticFiles embed.FS
 const envTempToken = "TEMPORARY_TOKEN"
 
 var logger = log.New(os.Stdout, "vrc_panoprama_picture_manage: ", log.LstdFlags)
+var token string
 
 func main() {
-	temporaryToken := uuid.Must(uuid.NewRandom())
-	err := os.Setenv(envTempToken, temporaryToken.String())
-	if err != nil {
-		logger.Fatalln(err)
+	token := os.Getenv(envTempToken)
+
+	if token == "" {
+		token = uuid.Must(uuid.NewRandom()).String()
 	}
-	logger.Printf("current temporary token %s \n", temporaryToken)
+	logger.Printf("current temporary token %s \n", token)
 
 	go func() {
 		for range time.Tick(time.Minute) {
@@ -48,7 +49,6 @@ func main() {
 					logger.Println(err)
 				}
 				if ok, _ := checkCacheExists(url); ok {
-					logger.Printf("cache exists %s \n", url)
 					continue
 				}
 
@@ -232,9 +232,8 @@ func keysHandler(c echo.Context) error {
 	return c.JSON(200, k)
 }
 
-func validToken(token string) bool {
-	tt := os.Getenv(envTempToken)
-	if tt != "" && tt == token {
+func validToken(req string) bool {
+	if token == req {
 		return true
 	}
 	r, err := redisConnection()
