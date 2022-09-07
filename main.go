@@ -47,6 +47,7 @@ func main() {
 				url, err := getContentURLByKey(key)
 				if err != nil {
 					logger.Println(err)
+					continue
 				}
 				if ok, _ := checkCacheExists(url); ok {
 					continue
@@ -55,10 +56,19 @@ func main() {
 				data, err := fetchContentByURL(url)
 				if err != nil {
 					logger.Println(err)
+					continue
 				}
-				err = cachePut(url, data)
+
+				image, err := generateMP4(data)
+				if err != nil {
+					logger.Println(err)
+					continue
+				}
+
+				err = cachePut(url, image)
 				if err != nil {
 					log.Println(err)
+					continue
 				}
 				log.Println("cache generate", url)
 
