@@ -2,7 +2,7 @@ package main
 
 import (
 	"embed"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/labstack/echo"
 	ffmpeg "github.com/u2takey/ffmpeg-go"
