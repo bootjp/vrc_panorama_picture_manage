@@ -25,7 +25,7 @@ var logger = log.New(os.Stdout, "vrc_panoprama_picture_manage: ", log.LstdFlags)
 var token string
 
 func main() {
-	token := os.Getenv(envTempToken)
+	token = os.Getenv(envTempToken)
 
 	if token == "" {
 		token = uuid.Must(uuid.NewRandom()).String()
