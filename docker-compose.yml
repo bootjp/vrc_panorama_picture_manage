@@ -6,12 +6,12 @@ services:
     ports:
       - "6379:6379"
 
-  app:
-    build:
-        context: .
-        dockerfile: Dockerfile
-    ports:
-      - "1323:1323"
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+#  app:
+#    build:
+#        context: .
+#        dockerfile: Dockerfile
+#    ports:
+#      - "1323:1323"
+#    environment:
+#      - REDIS_HOST=redis
+#      - REDIS_PORT=6379

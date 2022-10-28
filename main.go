@@ -5,6 +5,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	ffmpeg "github.com/u2takey/ffmpeg-go"
 	"hash/fnv"
 	"io"
@@ -88,8 +89,12 @@ func main() {
 	e.GET("/_/", echo.WrapHandler(http.StripPrefix("/_/", http.FileServer(http.FS(staticFiles)))))
 	e.GET("/v1/:key", panoramaHandler)
 	e.GET("/v2/:key", mp4Handler)
-	e.PUT("/api/:key", putHandler)
 	e.GET("/api/keys", keysHandler)
+	g := e.Group("/api/:key", middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
+		return validToken(key)
+	}))
+	g.PUT("", putHandler)
+
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
@@ -178,8 +183,7 @@ func checkCacheExists(url string) (bool, []byte) {
 
 type (
 	PutRequest struct {
-		Token string `json:"token"`
-		URL   string `json:"url"`
+		URL string `json:"url"`
 	}
 )
 
@@ -192,9 +196,7 @@ func putHandler(c echo.Context) error {
 	if err := c.Bind(u); err != nil {
 		return c.String(400, `{"message": "invalid request"}`)
 	}
-	if !validToken(u.Token) {
-		return c.String(403, `{"message": "invalid request"}`)
-	}
+
 	r, err := redisConnection()
 	if err != nil {
 		logger.Println(err)
@@ -242,14 +244,13 @@ func keysHandler(c echo.Context) error {
 	return c.JSON(200, k)
 }
 
-func validToken(req string) bool {
+func validToken(req string) (bool, error) {
 	if token == req {
-		return true
+		return true, nil
 	}
 	r, err := redisConnection()
 	if err != nil {
-		logger.Println(err)
-		return false
+		return false, err
 	}
 	defer func() {
 		if err := r.Close(); err != nil {
@@ -259,16 +260,16 @@ func validToken(req string) bool {
 
 	tokens, err := redis.Strings(r.Do("SMEMBERS", "tokens"))
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	for _, v := range tokens {
 		if v == req {
-			return true
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 func getContentURLByKey(key string) (string, error) {

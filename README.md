@@ -21,7 +21,7 @@ current temporary token a4df3e9f-a6dc-4967-ac15-02750314f795
 ### setup redirect content.
 
 ```bash
-curl -X PUT -v -H "Content-Type: application/json" http://localhost:1323/api/aaaa -d '{"url":"https://avatars3.githubusercontent.com/u/1306365?v=4","token":"a4df3e9f-a6dc-4967-ac15-02750314f795"}'
+curl -X PUT -v -H "Content-Type: application/json" -H "Authorization: Bearer a4df3e9f-a6dc-4967-ac15-02750314f795" http://localhost:1323/api/aaaa -d '{"url":"https://avatars3.githubusercontent.com/u/1306365?v=4"}'
 # save to content
 
 # check for content redirect.
