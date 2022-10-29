@@ -20,68 +20,13 @@ import (
 //go:embed index.html
 var staticFiles embed.FS
 
-const envTempToken = "TEMPORARY_TOKEN"
-
-var logger = log.New(os.Stdout, "vrc_panoprama_picture_manage: ", log.LstdFlags)
-var token string
+var logger = log.New(os.Stdout, "vrc_ppm: ", log.LstdFlags)
+var token = uuid.Must(uuid.NewRandom()).String()
 
 func main() {
-	token = os.Getenv(envTempToken)
-
-	if token == "" {
-		token = uuid.Must(uuid.NewRandom()).String()
-	}
 	logger.Printf("current temporary token %s \n", token)
 
-	go func() {
-		for range time.Tick(time.Minute) {
-			r, err := redisConnection()
-			if err != nil {
-				logger.Println(err)
-				continue
-			}
-
-			k, err := redis.Strings(r.Do("SMEMBERS", "keys"))
-			if err != nil {
-				logger.Println(err)
-				continue
-			}
-			for _, key := range k {
-				url, err := getContentURLByKey(key)
-				if err != nil {
-					logger.Println(err)
-					continue
-				}
-				if ok, _ := checkCacheExists(url); ok {
-					continue
-				}
-
-				data, err := fetchContentByURL(url)
-				if err != nil {
-					logger.Println(err)
-					continue
-				}
-
-				image, err := generateMP4(data)
-				if err != nil {
-					logger.Println(err)
-					continue
-				}
-
-				err = cachePut(url, image)
-				if err != nil {
-					log.Println(err)
-					continue
-				}
-				log.Println("cache generate", url)
-			}
-			err = r.Close()
-			if err != nil {
-				logger.Println(err)
-				return
-			}
-		}
-	}()
+	go Ticker()
 
 	e := echo.New()
 
@@ -96,6 +41,56 @@ func main() {
 	g.PUT("", putHandler)
 
 	e.Logger.Fatal(e.Start(":1323"))
+}
+
+func Ticker() {
+	for range time.Tick(time.Minute) {
+		r, err := redisConnection()
+		if err != nil {
+			logger.Println(err)
+			continue
+		}
+
+		k, err := redis.Strings(r.Do("SMEMBERS", "keys"))
+		if err != nil {
+			logger.Println(err)
+			continue
+		}
+		for _, key := range k {
+			url, err := getContentURLByKey(key)
+			if err != nil {
+				logger.Println(err)
+				continue
+			}
+			if ok, _ := checkCacheExists(url); ok {
+				continue
+			}
+
+			data, err := fetchContentByURL(url)
+			if err != nil {
+				logger.Println(err)
+				continue
+			}
+
+			image, err := generateMP4(data)
+			if err != nil {
+				logger.Println(err)
+				continue
+			}
+
+			err = cachePut(url, image)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			log.Println("cache generate", url)
+		}
+		err = r.Close()
+		if err != nil {
+			logger.Println(err)
+			continue
+		}
+	}
 }
 
 // panoramaHandler is response redirect endpoint
