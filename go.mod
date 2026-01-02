@@ -7,7 +7,7 @@ toolchain go1.25.5
 require (
 	github.com/gomodule/redigo v1.9.3
 	github.com/google/uuid v1.6.0
-	github.com/labstack/echo/v4 v4.14.0
+	github.com/labstack/echo/v4 v4.15.0
 	github.com/u2takey/ffmpeg-go v0.5.0
 )
 
