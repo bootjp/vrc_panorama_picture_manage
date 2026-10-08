@@ -2,13 +2,12 @@ module github.com/bootjp/vrc_panoprama_picture_manage
 
 go 1.25.0
 
-toolchain go1.25.6
+toolchain go1.27.2
 
 require (
 	github.com/gomodule/redigo v1.9.3
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.16.0
-	github.com/labstack/echo/v5 v5.4.0
 	github.com/u2takey/ffmpeg-go v0.5.0
 )
 
