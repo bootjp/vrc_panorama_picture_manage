@@ -34,3 +34,17 @@ curl http://localhost:1323/api/keys
 
 
 ```
+
+## Redis settings
+
+`REDIS_HOST` selects the Redis-compatible server. `REDIS_KEY_PREFIX` is optional
+and defaults to an empty string for existing installations. Set it to a unique
+value such as `panorama:` when using a shared Redis-compatible cluster. It is
+applied to the `keys` and `tokens` sets and each panorama URL key; the members
+of those sets keep their original values. Existing data must be copied into
+the prefixed keys before changing this setting.
+
+`PANORAMA_LOG_TEMP_TOKEN=false` suppresses the temporary admin token in logs.
+The default keeps the existing development behavior. When log output is
+disabled, provision an admin token in the prefixed `tokens` set before starting
+the application.

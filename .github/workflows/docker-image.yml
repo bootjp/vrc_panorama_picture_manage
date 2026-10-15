@@ -1,20 +1,45 @@
 name: Docker Image CI
 
 on:
+  pull_request:
+    branches: [master]
   push:
     branches: [master]
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
 
+jobs:
+  verify:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: true
 
+      - name: Test
+        run: go test ./...
+
       - name: Build the Docker image
-        run: docker build -t ghcr.io/bootjp/vrc_panorama_picture_manage:latest .
+        run: docker build -t panorama-pr-check .
+
+  publish:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build the Docker image
+        run: docker build -t ghcr.io/bootjp/vrc_panorama_picture_manage:latest -t "ghcr.io/bootjp/vrc_panorama_picture_manage:sha-${GITHUB_SHA}" .
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
@@ -23,5 +48,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: push the Docker image
-        run: docker push ghcr.io/bootjp/vrc_panorama_picture_manage:latest
+      - name: Push the Docker image
+        run: |
+          docker push "ghcr.io/bootjp/vrc_panorama_picture_manage:sha-${GITHUB_SHA}"
+          docker push ghcr.io/bootjp/vrc_panorama_picture_manage:latest
