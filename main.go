@@ -24,7 +24,9 @@ var logger = log.New(os.Stdout, "vrc_ppm: ", log.LstdFlags)
 var token = uuid.Must(uuid.NewRandom()).String()
 
 func main() {
-	logger.Printf("current temporary token %s \n", token)
+	if os.Getenv("PANORAMA_LOG_TEMP_TOKEN") != "false" {
+		logger.Printf("current temporary token %s \n", token)
+	}
 
 	go Ticker()
 
@@ -51,7 +53,7 @@ func Ticker() {
 			continue
 		}
 
-		k, err := redis.Strings(r.Do("SMEMBERS", "keys"))
+		k, err := redis.Strings(r.Do("SMEMBERS", redisKey("keys")))
 		if err != nil {
 			logger.Println(err)
 			continue
@@ -203,14 +205,14 @@ func putHandler(c echo.Context) error {
 		}
 	}()
 
-	_, err = r.Do("SET", key, u.URL)
+	_, err = r.Do("SET", redisKey(key), u.URL)
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
-	_, err = r.Do("SADD", "keys", key)
+	_, err = r.Do("SADD", redisKey("keys"), key)
 	if err != nil {
 		return c.String(500, `{"message": "data save failed"}`)
 	}
@@ -230,7 +232,7 @@ func keysHandler(c echo.Context) error {
 		}
 	}()
 
-	k, err := redis.Strings(r.Do("SMEMBERS", "keys"))
+	k, err := redis.Strings(r.Do("SMEMBERS", redisKey("keys")))
 	if err != nil {
 		logger.Println(err)
 		return c.JSON(500, `{"message": "data save failed"}`)
@@ -253,7 +255,7 @@ func validToken(req string) (bool, error) {
 		}
 	}()
 
-	tokens, err := redis.Strings(r.Do("SMEMBERS", "tokens"))
+	tokens, err := redis.Strings(r.Do("SMEMBERS", redisKey("tokens")))
 	if err != nil {
 		return false, err
 	}
@@ -279,7 +281,7 @@ func getContentURLByKey(key string) (string, error) {
 		}
 
 	}()
-	return redis.String(r.Do("GET", key))
+	return redis.String(r.Do("GET", redisKey(key)))
 }
 
 func fetchContentByURL(url string) ([]byte, error) {
@@ -338,6 +340,10 @@ func generateMP4(data []byte) ([]byte, error) {
 	}
 
 	return io.ReadAll(movFile)
+}
+
+func redisKey(key string) string {
+	return os.Getenv("REDIS_KEY_PREFIX") + key
 }
 
 func redisConnection() (redis.Conn, error) {
