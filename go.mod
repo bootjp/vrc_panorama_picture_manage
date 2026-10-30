@@ -5,7 +5,8 @@ go 1.26.0
 require (
 	github.com/gomodule/redigo v1.9.3
 	github.com/google/uuid v1.6.0
-	github.com/labstack/echo/v4 v4.16.2
+	github.com/labstack/echo/v4 v4.16.3
+	github.com/labstack/echo/v5 v5.4.4
 	github.com/u2takey/ffmpeg-go v0.5.0
 )
 
