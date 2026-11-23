@@ -1,12 +1,8 @@
 package main
 
 import (
+	"crypto/subtle"
 	"embed"
-	"github.com/gomodule/redigo/redis"
-	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	ffmpeg "github.com/u2takey/ffmpeg-go"
 	"hash/fnv"
 	"io"
 	"log"
@@ -15,6 +11,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
+	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
 
 //go:embed index.html
@@ -30,6 +32,14 @@ func main() {
 
 	go Ticker()
 
+	e := newRouter()
+	err := e.Start(":1323")
+	if err != nil {
+		e.Logger.Error("failed to start server", "error", err)
+	}
+}
+
+func newRouter() *echo.Echo {
 	e := echo.New()
 
 	// Routes
@@ -37,12 +47,13 @@ func main() {
 	e.GET("/v1/:key", panoramaHandler)
 	e.GET("/v2/:key", mp4Handler)
 	e.GET("/api/keys", keysHandler)
-	g := e.Group("/api/:key", middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
+
+	g := e.Group("/api/:key", middleware.KeyAuth(func(c *echo.Context, key string, source middleware.ExtractorSource) (bool, error) {
 		return validToken(key)
 	}))
-	g.PUT("", putHandler)
 
-	e.Logger.Fatal(e.Start(":1323"))
+	g.PUT("", putHandler)
+	return e
 }
 
 func Ticker() {
@@ -98,7 +109,7 @@ func Ticker() {
 // panoramaHandler is response redirect endpoint
 // in case of follow redirect client
 // ex) VRChat SDK2 World Panorama Component
-func panoramaHandler(c echo.Context) error {
+func panoramaHandler(c *echo.Context) error {
 	key := c.Param("key")
 	c.Response().Header().Set("Cache-Control", "max-age=0, s-maxage=1800")
 	c.Response().Header().Set("CDN-Cache-Control", "maxage=1800")
@@ -116,7 +127,7 @@ func panoramaHandler(c echo.Context) error {
 // mp4Handler is response 1 sec mp4 movie
 // in case of only support movie only client
 // ex) VRChat SDK3 World Video Component
-func mp4Handler(c echo.Context) error {
+func mp4Handler(c *echo.Context) error {
 	key := c.Param("key")
 	c.Response().Header().Set("Cache-Control", "max-age=0, s-maxage=1800")
 	c.Response().Header().Set("CDN-Cache-Control", "maxage=1800")
@@ -186,7 +197,7 @@ type (
 
 // putHandler is handling manage request
 // check temporary token or in redis persistent token
-func putHandler(c echo.Context) error {
+func putHandler(c *echo.Context) error {
 	key := c.Param("key")
 
 	u := &PutRequest{}
@@ -220,7 +231,7 @@ func putHandler(c echo.Context) error {
 	return c.String(200, `{"message":"success"}`)
 }
 
-func keysHandler(c echo.Context) error {
+func keysHandler(c *echo.Context) error {
 	r, err := redisConnection()
 	if err != nil {
 		logger.Println(err)
@@ -261,7 +272,7 @@ func validToken(req string) (bool, error) {
 	}
 
 	for _, v := range tokens {
-		if v == req {
+		if subtle.ConstantTimeCompare([]byte(v), []byte(req)) == 1 {
 			return true, nil
 		}
 	}
@@ -346,7 +357,9 @@ func redisKey(key string) string {
 	return os.Getenv("REDIS_KEY_PREFIX") + key
 }
 
-func redisConnection() (redis.Conn, error) {
+var redisConnection = dialRedis
+
+func dialRedis() (redis.Conn, error) {
 	host := os.Getenv("REDIS_HOST")
 	if host == "" {
 		host = "localhost"
